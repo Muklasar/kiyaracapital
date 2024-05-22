@@ -1,38 +1,37 @@
 const express = require('express');
-const csv = require('csv-parser');
 const fs = require('fs');
+const cors = require('cors')
 
 const app = express();
-const PORT = 3000;
+const PORT = 4000;
 
-// Example endpoint for getting paginated student data
+app.use(express.json());
+app.use(cors())
+
 app.get('/api/students', (req, res) => {
-  const { page = 1, pageSize = 10 } = req.query; // Default page size is 10
+  try {
+    const { page = 1, pageSize = 10 } = req.query;
 
-  const students = [];
-  let totalCount = 0;
+    // Read student data from JSON file
+    const studentsData = JSON.parse(fs.readFileSync('./data/students.json'));
 
-  // Read CSV file and parse data
-  fs.createReadStream('students.csv')
-    .pipe(csv())
-    .on('data', (row) => {
-      students.push(row);
-    })
-    .on('end', () => {
-      totalCount = students.length;
+    const totalCount = studentsData.length;
 
-      // Apply pagination
-      const startIndex = (page - 1) * pageSize;
-      const paginatedStudents = students.slice(startIndex, startIndex + parseInt(pageSize));
+    // Apply pagination
+    const startIndex = (page - 1) * pageSize;
+    const paginatedStudents = studentsData.slice(startIndex, startIndex + parseInt(pageSize));
 
-      res.json({
-        totalCount,
-        totalPages: Math.ceil(totalCount / pageSize),
-        currentPage: parseInt(page),
-        pageSize: parseInt(pageSize),
-        data: paginatedStudents,
-      });
+    res.status(200).json({
+      totalCount,
+      totalPages: Math.ceil(totalCount / pageSize),
+      currentPage: parseInt(page),
+      pageSize: parseInt(pageSize),
+      data: paginatedStudents,
     });
+  } catch (err) {
+    console.error('Error:', err);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
 });
 
 app.listen(PORT, () => {
